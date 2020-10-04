@@ -25,11 +25,12 @@ io.on('connection', function (socket) {
 
    console.log('User ' + socket.id + ' joined');
    /* Player information */
-   players[socket.id] = {
-      x: 100,//Math.floor(Math.random() * 700) + 50,
-      y: 100,//Math.floor(Math.random() * 500) + 50,
-      playerId: socket.id,
-      roomNum: roomno
+    players[socket.id] = {
+        rotation: 0,
+        x: Math.floor(Math.random() * 700) + 50,
+        y: Math.floor(Math.random() * 500) + 50,
+        playerId: socket.id,
+        roomNum: roomno
    };
 
    socket.emit('currentPlayers', players);

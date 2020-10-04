@@ -29,27 +29,30 @@ function preload() {
     this.load.image('newPlayer', '../assets/BasePack/Player/p2_stand.png');
 
     this.load.tilemapTiledJSON('map', '../assets/test_map.json');
-    this.load.image('grass', '../assets/BasePack/Tiles/grass.png');
+    this.load.spritesheet('grass', 'assets/BasePack/Tiles/grass.png', { frameWidth: 70, frameHeight: 70 });
 }
 
 function create() {
-
-    const map = this.make.tilemap({key: "map"});
+    const map = this.make.tilemap({ key: 'map' });
     const groundTiles = map.addTilesetImage('grass', 'grass', 32, 32);
-    let groundLayer = map.createStaticLayer('World', groundTiles, 0, 0);
-    groundLayer.setCollisionByProperty({collides: true});
 
+    let groundLayer = map.createStaticLayer('World', groundTiles, 0, 0);
+    groundLayer.setCollisionByProperty({ collides: true });
+
+    this.matter.world.bounds.width = groundLayer.width;
+    this.matter.world.bounds.height = groundLayer.height;
     map.setCollisionBetween(0, 6);
+
+    let self = this;
+    this.socket = io();
 
     this.matter.world.convertTilemapLayer(groundLayer);
     this.matter.world.createDebugGraphic();
 
 
-    let self = this;
-    this.socket = io();
-    this.socket.on('currentPlayers', function (players){
-        Object.keys(players).forEach(function (id){
-            if(players[id].playerId === self.socket.id) {
+    this.socket.on('currentPlayers', function (players) {
+        Object.keys(players).forEach(function (id) {
+            if (players[id].playerId === self.socket.id) {
                 addPlayer(self, players[id])
             } else {
                 addNewPlayers(self, players[id]);
@@ -57,12 +60,12 @@ function create() {
         });
     });
 
-    this.socket.on('newPlayer', function (playerInfo){
-       addNewPlayers(self, playerInfo);
+    this.socket.on('newPlayer', function (playerInfo) {
+        addNewPlayers(self, playerInfo);
     });
 
-    this.socket.on('playerMoved', function(playerInfo){
-        if(playerInfo.playerId !== self.socket.id) {
+    this.socket.on('playerMoved', function (playerInfo) {
+        if (playerInfo.playerId !== self.socket.id) {
             for (let i = self.matter.world.localWorld.bodies.length - 1; i >= 0; --i) {
                 let tempObj = self.matter.world.localWorld.bodies[i];
                 if (('playerId' in tempObj.gameObject) && (playerInfo.playerId === tempObj.gameObject.playerId)) {
@@ -76,8 +79,8 @@ function create() {
         }
     });
 
-    this.socket.on('disconnect', function(playerId){
-        if(playerId !== self.socket.id) {
+    this.socket.on('disconnect', function (playerId) {
+        if (playerId !== self.socket.id) {
             for (let i = self.matter.world.localWorld.bodies.length - 1; i >= 0; --i) {
                 let tempObj = self.matter.world.localWorld.bodies[i];
                 if (('playerId' in tempObj.gameObject) && (playerId === tempObj.gameObject.playerId)) {
@@ -127,11 +130,10 @@ function update() {
             y:yMov
         };
     }
-
 }
 
 function addPlayer(self, playerData) {
-    self.player = self.matter.add.image(playerData.x, playerData.y, 'player').setDisplaySize(64, 64);
+    self.player = self.matter.add.image(playerData.x, playerData.y, 'actor').setDisplaySize(64, 64);
     self.cameras.main.startFollow(self.player, lerpx=0.05, lerpy=0.05, true);
 }
 
