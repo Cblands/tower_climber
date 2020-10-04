@@ -28,27 +28,26 @@ function preload() {
     this.load.image('player', '../assets/BasePack/Player/p1_stand.png');
     this.load.image('newPlayer', '../assets/BasePack/Player/p2_stand.png');
 
-    this.load.tilemapTiledJSON('map', '../assets/test_map.json');
-    this.load.spritesheet('grass', 'assets/BasePack/Tiles/grass.png', { frameWidth: 70, frameHeight: 70 });
+    this.load.tilemapTiledJSON('map', 'assets/test_map.json')
+    this.load.image('grass', 'assets/BasePack/Tiles/grass.png');
 }
 
 function create() {
     const map = this.make.tilemap({ key: 'map' });
-    const groundTiles = map.addTilesetImage('grass', 'grass', 32, 32);
+    const groundTiles = map.addTilesetImage('grass', 'grass', 70, 70);
 
-    let groundLayer = map.createStaticLayer('World', groundTiles, 0, 0);
+    groundLayer = map.createStaticLayer('World', groundTiles, 0, 0);
     groundLayer.setCollisionByProperty({ collides: true });
 
-    this.matter.world.bounds.width = groundLayer.width;
-    this.matter.world.bounds.height = groundLayer.height;
     map.setCollisionBetween(0, 6);
+    this.matter.world.convertTilemapLayer(groundLayer);
+    this.matter.world.createDebugGraphic();
 
     let self = this;
     this.socket = io();
 
     this.matter.world.convertTilemapLayer(groundLayer);
     this.matter.world.createDebugGraphic();
-
 
     this.socket.on('currentPlayers', function (players) {
         Object.keys(players).forEach(function (id) {
