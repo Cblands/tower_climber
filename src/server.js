@@ -10,19 +10,47 @@ app.get('/', function (req, res){
     res.sendFile(__dirname + '/index.html')
 });
 
+app.get('/game', function (req, res){
+   res.sendFile(__dirname + '/client/game.html');
+});
+
+let roomno = 1;
 io.on('connection', function (socket) {
-   console.log('User joined');
+   console.log("Connecting to room " + roomno);
+
+   socket.join("room-"+roomno);
+
+   // //Send this event to everyone in the room.
+   // io.sockets.in("room-"+roomno).emit('connectToRoom', "You are in room no. " + roomno);
+
+   console.log('User ' + socket.id + ' joined');
    /* Player information */
    players[socket.id] = {
-       playerId: socket.id,
+      x: 100,//Math.floor(Math.random() * 700) + 50,
+      y: 100,//Math.floor(Math.random() * 500) + 50,
+      playerId: socket.id,
+      roomNum: roomno
    };
+
    socket.emit('currentPlayers', players);
-   socket.broadcast.emit('newPlayer', players[socket.id]);
-   socket.on('disconnect', function() {
-      console.log('User left');
+   socket.broadcast.to('room-' + players[socket.id].roomNum).emit('newPlayer', players[socket.id]);
+
+   socket.on('disconnect', function(){
+      console.log('User ' + socket.id + ' left');
+      socket.leave('room-' + players[socket.id].roomNum);
+      io.sockets.in("room-" + players[socket.id].roomNum).emit('disconnect', socket.id);
       delete players[socket.id];
-      io.emit('disconnect', socket.id);
    });
+
+   socket.on('playerMovement', function (moveData){
+      players[socket.id].x = moveData.x;
+      players[socket.id].y = moveData.y;
+      socket.broadcast.to('room-' + players[socket.id].roomNum).emit('playerMoved', players[socket.id]);
+   });
+
+   if(io.nsps['/'].adapter.rooms["room-" + roomno] && io.nsps['/'].adapter.rooms["room-" + roomno].length > 10) {
+      roomno++;
+   }
 });
 
 server.listen(4200, function (){
