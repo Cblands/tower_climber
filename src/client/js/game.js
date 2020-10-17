@@ -29,14 +29,14 @@ function preload() {
     this.load.image('newPlayer', '../assets/BasePack/Player/p2_stand.png');
 
     this.load.tilemapTiledJSON('map', 'assets/test_map.json')
-    this.load.image('grass', 'assets/BasePack/Tiles/grass.png');
+    this.load.image('tiles', 'assets/BasePack/Tiles/tiles_spritesheet.png');
 }
 
 function create() {
     const map = this.make.tilemap({ key: 'map' });
-    const groundTiles = map.addTilesetImage('grass', 'grass', 70, 70);
+    const groundTiles = map.addTilesetImage('tiles_spritesheet', 'tiles', 70, 70, 0, 2);
 
-    groundLayer = map.createStaticLayer('World', groundTiles, 0, 0);
+    groundLayer = map.createStaticLayer('World', groundTiles);
     groundLayer.setCollisionByProperty({ collides: true });
 
     map.setCollisionBetween(0, 6);
@@ -44,6 +44,10 @@ function create() {
     this.matter.world.createDebugGraphic();
 
     let self = this;
+    this.cameras.main.setBackgroundColor('rgb(0, 200, 255)');
+
+    self.actors = {}
+
     this.socket = io();
 
     this.matter.world.convertTilemapLayer(groundLayer);
@@ -52,9 +56,10 @@ function create() {
     this.socket.on('currentPlayers', function (players) {
         Object.keys(players).forEach(function (id) {
             if (players[id].playerId === self.socket.id) {
-                addPlayer(self, players[id])
+                addLocalPlayer(self, players[id]);
+
             } else {
-                addNewPlayers(self, players[id]);
+                addRemotePlayer(self, players[id]);
             }
         });
     });
@@ -131,12 +136,12 @@ function update() {
     }
 }
 
-function addPlayer(self, playerData) {
-    self.player = self.matter.add.image(playerData.x, playerData.y, 'actor').setDisplaySize(64, 64);
-    self.cameras.main.startFollow(self.player, lerpx=0.05, lerpy=0.05, true);
+function addLocalPlayer(self, playerInfo) {
+    self.actors[playerInfo.playerId] = self.matter.add.image(playerInfo.x, playerInfo.y, 'actor').setOrigin(0.5, 0.5).setDisplaySize(64, 64);
+    self.cameras.main.startFollow(self.actors[playerInfo.playerId], lerpX = 0.5, lerpY = 0.5);
 }
 
-function addNewPlayers(self, playerData) {
+function addRemotePlayer(self, playerInfo) {
     const otherPlayer = self.matter.add.image(playerData.x, playerData.y, 'newPlayer').setDisplaySize(64, 64);
     otherPlayer.playerId = playerData.playerId;
     self.matter.world.add(otherPlayer);

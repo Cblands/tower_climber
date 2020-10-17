@@ -27,8 +27,8 @@ io.on('connection', function (socket) {
    /* Player information */
     players[socket.id] = {
         rotation: 0,
-        x: Math.floor(Math.random() * 700) + 50,
-        y: Math.floor(Math.random() * 500) + 50,
+        x: Math.floor(Object.keys(players).length * 215) + 135,
+        y: 1200,
         playerId: socket.id,
         roomNum: roomno
    };
