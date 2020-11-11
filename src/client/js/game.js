@@ -115,18 +115,18 @@ function update() {
     if (this.player) {
         if (this.cursors.left.isDown) {
             //console.log("left held down");
-            this.socket.emit('move', 'left');
+            //this.socket.emit('move', 'left');
             this.actors[this.socket.id].setVelocityX(-5);
         }
         else if (this.cursors.right.isDown) {
             //console.log("right held down");
-            this.socket.emit('move', 'right');
+            //this.socket.emit('move', 'right');
             this.actors[this.socket.id].setVelocityX(5);
         }
 
         if (this.cursors.space.isDown && ground.length > 0) {
             //console.log("jump held down");
-            this.socket.emit('move', 'jump');
+            //this.socket.emit('move', 'jump');
             this.actors[this.socket.id].setVelocityY(-6);
         }
 

@@ -27,8 +27,8 @@ io.on('connection', function (socket) {
    /* Player information */
     players[socket.id] = {
         rotation: 0,
-        x: Math.floor(Object.keys(players).length * 215) + 135,
-        y: 1200,
+        x: Math.floor(Object.keys(players).length * 235) + 115,
+        y: 1260,
         playerId: socket.id,
         roomNum: roomno
    };
@@ -47,6 +47,7 @@ io.on('connection', function (socket) {
       players[socket.id].x = moveData.x;
       players[socket.id].y = moveData.y;
       socket.broadcast.to('room-' + players[socket.id].roomNum).emit('playerMoved', players[socket.id]);
+
    });
 
    if(io.nsps['/'].adapter.rooms["room-" + roomno] && io.nsps['/'].adapter.rooms["room-" + roomno].length > 10) {
