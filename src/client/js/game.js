@@ -25,10 +25,14 @@ let config = {
 
 let game = new Phaser.Game(config);
 const groundedFriction = 1;
-const ungroundedFriction = 0.1;
+const wallSlideFriction = 0.2;
 const airFriction = 0;
 var ground = [];
 var localActorId;
+
+var jumpSpd = [ -15, -7.5];
+var jumpTickMax = 6;
+var jumpTick = 0;
 
 function preload() {
     this.load.image('player', '../assets/BasePack/Player/p1_stand.png');
@@ -40,6 +44,7 @@ function preload() {
 
 function create() {
     this.socket = io();
+    this.cursors = this.input.keyboard.createCursorKeys();
 
     const map = this.make.tilemap({ key: 'map' });
     const terrain = map.addTilesetImage('tileset', 'tiles', 70, 70, 0, 0);
@@ -66,7 +71,6 @@ function create() {
         Object.keys(players).forEach(function (id) {
             if (players[id].playerId === self.socket.id) {
                 addLocalPlayer(self, players[id]);
-
             } else {
                 addRemotePlayer(self, players[id]);
             }
@@ -111,44 +115,6 @@ function create() {
     this.cursors = this.input.keyboard.createCursorKeys();
 }
 
-function update() {
-    if (this.player) {
-        if (this.cursors.left.isDown) {
-            //console.log("left held down");
-            //this.socket.emit('move', 'left');
-            this.actors[this.socket.id].setVelocityX(-5);
-        }
-        else if (this.cursors.right.isDown) {
-            //console.log("right held down");
-            //this.socket.emit('move', 'right');
-            this.actors[this.socket.id].setVelocityX(5);
-        }
-
-        if (this.cursors.space.isDown && ground.length > 0) {
-            //console.log("jump held down");
-            //this.socket.emit('move', 'jump');
-            this.actors[this.socket.id].setVelocityY(-6);
-        }
-
-        let xMov = this.player.x;
-        let yMov = this.player.y;
-
-        let xMovRounded = Math.round((xMov + Number.EPSILON) * 10) / 10;
-        let yMovRounded = Math.round((yMov + Number.EPSILON) * 10) / 10;
-        let oldXMovRounded = this.player.oldPosition ? Math.round((this.player.oldPosition.x + Number.EPSILON) * 10) / 10 : 0;
-        let oldYMovRounded = this.player.oldPosition ? Math.round((this.player.oldPosition.y + Number.EPSILON) * 10) / 10 : 0;
-
-        if (this.player.oldPosition && (xMovRounded !== oldXMovRounded || yMovRounded !== oldYMovRounded)) {
-            console.log(xMovRounded + ":" + oldXMovRounded);
-            this.socket.emit('playerMovement', { x: xMov, y: yMov });
-        }
-        this.player.oldPosition = {
-            x: xMov,
-            y: yMov
-        };
-    }
-}
-
 function addLocalPlayer(self, playerInfo) {
     self.actors[playerInfo.playerId] = self.matter.add.image(playerInfo.x, playerInfo.y, 'actor').setOrigin(0.5, 0.5).setDisplaySize(64, 64);
     self.actors[playerInfo.playerId].setCircle(32);
@@ -170,9 +136,99 @@ function addRemotePlayer(self, playerInfo) {
     self.actors[playerInfo.playerId].setFixedRotation();
 }
 
-function OnEnterCollision(collisionData) {
-    console.log("enter collision");
+function update() {
+    if (this.player) {
+        if (ground.length > 0)
+            groundUpdate(this);
+        else if (ground.length == 0)
+            airUpdate(this);
 
+        let xMov = this.player.x;
+        let yMov = this.player.y;
+
+        let xMovRounded = Math.round((xMov + Number.EPSILON) * 10) / 10;
+        let yMovRounded = Math.round((yMov + Number.EPSILON) * 10) / 10;
+        let oldXMovRounded = this.player.oldPosition ? Math.round((this.player.oldPosition.x + Number.EPSILON) * 10) / 10 : 0;
+        let oldYMovRounded = this.player.oldPosition ? Math.round((this.player.oldPosition.y + Number.EPSILON) * 10) / 10 : 0;
+
+        if (this.player.oldPosition && (xMovRounded !== oldXMovRounded || yMovRounded !== oldYMovRounded)) {
+            console.log(xMovRounded + ":" + oldXMovRounded);
+            this.socket.emit('playerMovement', { x: xMov, y: yMov });
+        }
+        this.player.oldPosition = {
+            x: xMov,
+            y: yMov
+        };
+    }
+}
+
+function groundUpdate(self) {
+    if (self.cursors.left.isDown) {
+        //console.log("left held down");
+        //self.socket.emit('move', 'left');
+        //self.actors[self.socket.id].applyForce(-0.5, 0);
+        move(self, -5, 'left');
+    }
+    else if (self.cursors.right.isDown) {
+        //console.log("right held down");
+        //self.socket.emit('move', 'right');
+        //self.actors[self.socket.id].applyForce(0.5, 0);
+        move(self, 5, 'right');
+    }
+
+    if (self.cursors.space.isDown) {
+        //console.log("jump held down");
+
+        self.socket.emit('move', 'jump');
+        //self.actors[self.socket.id].applyForce((0, jumpSpd[jumpTick = 0]));
+        console.log("jumpSpd: " + jumpSpd[jumpTick = 0]);
+        jump(self, jumpSpd[jumpTick = 0]);
+    }
+
+}
+
+function airUpdate(self) {
+    if (self.cursors.left.isDown) {
+        //console.log("left held down");
+        //self.socket.emit('move', 'left');
+        //self.actors[self.socket.id].applyForce(-0.5, 0);
+        move(self, -5, 'left');
+    }
+    else if (self.cursors.right.isDown) {
+        //console.log("right held down");
+        //self.socket.emit('move', 'right');
+        //self.actors[self.socket.id].applyForce(0.5, 0);
+        //self.actors[self.socket.id].setVelocityX(5);
+        move(self, 5, 'right');
+    }
+
+    if (self.cursors.space.isDown && jumpTick < jumpSpd.length) {
+        //console.log("jump held down");
+        //self.actors[self.socket.id].applyForce((0, jumpSpd[jumpTick++]));
+
+        console.log("jumpSpd: " + jumpSpd[jumpTick++]);
+        jump(self, jumpSpd[jumpTick++]);
+    }
+    else if (self.cursors.space.isUp) {
+        jumpTick = jumpSpd.length;
+    }
+    else if (jumpTick >= jumpSpd.length) {
+        console.log("jumpTick > length: " + jumpTick + " > " + jumpSpd.length);
+    }
+}
+
+function move(self, spd, direction) {
+    self.socket.emit('move', direction);
+    self.actors[self.socket.id].setVelocityX(spd);
+}
+
+function jump(self, spd) {
+    self.actors[self.socket.id].setVelocityY(spd);
+}
+
+function OnEnterCollision(collisionData)
+{
+    //console.log("enter collision");
     //for(var property in collisionData)
     //{
     //    var value = collisionData[property];
@@ -182,25 +238,39 @@ function OnEnterCollision(collisionData) {
     if (collisionData.bodyA.id == localActorId) {
         if (collisionData.collision.normal.y < 0) {
             ground.push(collisionData.bodyB.id);
+            collisionData.bodyA.friction = 1;
         }
     }
     else if (collisionData.bodyB.id == localActorId) {
         if (collisionData.collision.normal.y > 0) {
             ground.push(collisionData.bodyA.id);
+            collisionData.bodyB.friction = 1;
         }
     }
 
-    console.log(ground);
+    //console.log("enter " + ground);
 }
 
 function OnExitCollision(collisionData) {
     if (ground.length == 0)
         return;
 
+    var playerBody;
+    var groundBody;
+
     if (collisionData.bodyA.id == localActorId) {
-        ground = ground.filter(function (value, index, arr) { return value != collisionData.bodyB.id; });
+        playerBody = collisionData.bodyA;
+        groundBody = collisionData.bodyB;
     }
     else if (collisionData.bodyB.id == localActorId) {
-        ground = ground.filter(function (value, index, arr) { return value != collisionData.bodyA.id; });
+        groundBody = collisionData.bodyA;
+        playerBody = collisionData.bodyB;
     }
+
+    ground = ground.filter(function (value, index, arr) { return value != groundBody.id; });
+
+    //console.log("exit: " + ground);
+
+    if (ground.length == 0)
+        playerBody.friction = 0;
 }
