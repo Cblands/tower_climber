@@ -30,12 +30,12 @@ const airFriction = 0;
 var ground = [];
 var localActorId;
 
-var jumpSpd = [ -15, -7.5];
+var jumpSpd = [ -20, -15];
 var jumpTickMax = 6;
 var jumpTick = 0;
 
 function preload() {
-    this.load.image('player', '../assets/BasePack/Player/p1_stand.png');
+    this.load.image('player', 'assets/BasePack/Player/p1_stand.png');
     this.load.image('newPlayer', 'assets/BasePack/Player/p2_stand.png');
 
     this.load.tilemapTiledJSON('map', 'assets/test_map3.json')
@@ -57,15 +57,15 @@ function create() {
 
     this.matter.world.convertTilemapLayer(backgroundLayer);
     this.matter.world.convertTilemapLayer(foregroundLayer);
-    this.matter.world.setBounds(width = map.width, height = map.height);
+    //this.matter.world.setBounds(width = map.width, height = map.height);
 
     this.matter.world.createDebugGraphic();
 
     let self = this;
+    self.actors = {}
 
     this.cameras.main.setBackgroundColor('rgb(0, 200, 255)');
 
-    self.actors = {}
 
     this.socket.on('currentPlayers', function (players) {
         Object.keys(players).forEach(function (id) {
@@ -100,6 +100,10 @@ function create() {
         if (playerId !== self.socket.id) {
             for (let i = self.matter.world.localWorld.bodies.length - 1; i >= 0; --i) {
                 let tempObj = self.matter.world.localWorld.bodies[i];
+
+                if (tempObj == null)
+                    continue;
+
                 if (('playerId' in tempObj.gameObject) && (playerId === tempObj.gameObject.playerId)) {
                     self.matter.world.remove(tempObj);
                     tempObj.gameObject.active = false;
@@ -116,24 +120,31 @@ function create() {
 }
 
 function addLocalPlayer(self, playerInfo) {
-    self.actors[playerInfo.playerId] = self.matter.add.image(playerInfo.x, playerInfo.y, 'actor').setOrigin(0.5, 0.5).setDisplaySize(64, 64);
+    console.log("Add local player");
+    self.actors[playerInfo.playerId] = self.matter.add.image(playerInfo.x, playerInfo.y, 'player').setOrigin(0.5, 0.5).setDisplaySize(64, 64);
     self.actors[playerInfo.playerId].setCircle(32);
     self.actors[playerInfo.playerId].setFixedRotation();
 
-    this.localActorId = self.actors[playerInfo.playerId].body.id;
-    console.log(this.localActorId);
+    localActorId = self.actors[playerInfo.playerId].body.id;
+    console.log(self.localActorId);
 
     self.actors[playerInfo.playerId].setOnCollide(OnEnterCollision);
     self.actors[playerInfo.playerId].setOnCollideEnd(OnExitCollision);
 
     self.cameras.main.startFollow(self.actors[playerInfo.playerId], lerpX = 0.5, lerpY = 0.5);
+
+    self.player = self.actors[playerInfo.playerId];
+    console.log(self.actors[self.localActorId]);
 }
 
 function addRemotePlayer(self, playerInfo) {
-    const otherPlayer = self.matter.add.image(playerData.x, playerData.y, 'newPlayer').setDisplaySize(64, 64);
-    otherPlayer.playerId = playerData.playerId;
+    console.log("Add remote player");
+    const otherPlayer = self.matter.add.image(playerInfo.x, playerInfo.y, 'newPlayer').setDisplaySize(64, 64);
+    otherPlayer.playerId = playerInfo.playerId;
+    otherPlayer.setCircle(32);
+    otherPlayer.setFixedRotation();
     self.matter.world.add(otherPlayer);
-    self.actors[playerInfo.playerId].setFixedRotation();
+    self.actors[playerInfo.playerId] = otherPlayer;
 }
 
 function update() {
@@ -160,6 +171,8 @@ function update() {
             y: yMov
         };
     }
+    else
+        console.log("no local actor");
 }
 
 function groundUpdate(self) {
@@ -219,11 +232,11 @@ function airUpdate(self) {
 
 function move(self, spd, direction) {
     self.socket.emit('move', direction);
-    self.actors[self.socket.id].setVelocityX(spd);
+    self.player.setVelocityX(spd);
 }
 
 function jump(self, spd) {
-    self.actors[self.socket.id].setVelocityY(spd);
+    self.player.setVelocityY(spd);
 }
 
 function OnEnterCollision(collisionData)
@@ -248,7 +261,7 @@ function OnEnterCollision(collisionData)
         }
     }
 
-    //console.log("enter " + ground);
+    console.log("enter " + ground);
 }
 
 function OnExitCollision(collisionData) {
