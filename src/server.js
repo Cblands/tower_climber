@@ -1,8 +1,9 @@
-let express = require('express');
-let app = express();
-let server = require('http').Server(app);
-let io = require('socket.io').listen(server);
-let players = {};
+const Room = require("./server/room.js");
+const express = require('express');
+const app = express();
+const server = require('http').Server(app);
+const io = require('socket.io').listen(server);
+let rooms = {};
 
 app.use(express.static(__dirname + '/client'));
 
@@ -15,43 +16,34 @@ app.get('/game', function (req, res){
 });
 
 let roomno = 1;
+rooms[roomno.toString(10)] = new Room(roomno);
+
 io.on('connection', function (socket) {
    console.log("Connecting to room " + roomno);
 
-   socket.join("room-"+roomno);
-
-   // //Send this event to everyone in the room.
-   // io.sockets.in("room-"+roomno).emit('connectToRoom', "You are in room no. " + roomno);
-
-   console.log('User ' + socket.id + ' joined');
-   /* Player information */
-    players[socket.id] = {
-        rotation: 0,
-        x: Math.floor(Object.keys(players).length * 235) + 115,
-        y: 1260,
-        playerId: socket.id,
-        roomNum: roomno
-   };
-
-   socket.emit('currentPlayers', players);
-   socket.broadcast.to('room-' + players[socket.id].roomNum).emit('newPlayer', players[socket.id]);
+    rooms[roomno.toString(10)].addPlayerToRoom(socket);
 
    socket.on('disconnect', function(){
-      console.log('User ' + socket.id + ' left');
-      socket.leave('room-' + players[socket.id].roomNum);
-      io.sockets.in("room-" + players[socket.id].roomNum).emit('disconnect', socket.id);
-      delete players[socket.id];
+      for(const key in rooms) {
+          if(rooms[key].checkIfPlayerInRoom(socket.id)) {
+              rooms[key].removePlayerFromRoom(socket);
+              break;
+          }
+      }
    });
 
    socket.on('playerMovement', function (moveData){
-      players[socket.id].x = moveData.x;
-      players[socket.id].y = moveData.y;
-      socket.broadcast.to('room-' + players[socket.id].roomNum).emit('playerMoved', players[socket.id]);
-
+       for(const key in rooms) {
+           if(rooms[key].checkIfPlayerInRoom(socket.id)) {
+               rooms[key].updatePlayerMovement(socket, moveData);
+               break;
+           }
+       }
    });
 
-   if(io.nsps['/'].adapter.rooms["room-" + roomno] && io.nsps['/'].adapter.rooms["room-" + roomno].length > 10) {
+   if(rooms[roomno.toString(10)].getNumOfPlayers() >= 2) {
       roomno++;
+      rooms[roomno.toString(10)] = new Room(roomno);
    }
 });
 
