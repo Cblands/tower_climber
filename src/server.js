@@ -3,6 +3,7 @@ let app = express();
 let server = require('http').Server(app);
 let io = require('socket.io').listen(server);
 let players = {};
+let PORT = env.process.PORT || 4200;
 
 app.use(express.static(__dirname + '/client'));
 
@@ -55,6 +56,6 @@ io.on('connection', function (socket) {
    }
 });
 
-server.listen(4200, function (){
-   console.log(`Listening on ${server.address().port}`);
+server.listen(PORT, function (){
+   console.log(`Listening on ${PORT}`);
 });
