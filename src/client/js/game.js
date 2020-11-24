@@ -96,16 +96,16 @@ function create() {
         }
     });
 
-    this.socket.on('disconnect', function (playerId) {
-        if (playerId !== self.socket.id) {
-            for (let i = self.matter.world.localWorld.bodies.length - 1; i >= 0; --i) {
-                let tempObj = self.matter.world.localWorld.bodies[i];
+    this.socket.on('disconnectPlayer', (playerId) => {
+        if (playerId !== this.socket.id) {
+            for (let i = this.matter.world.localWorld.bodies.length - 1; i >= 0; --i) {
+                let tempObj = this.matter.world.localWorld.bodies[i];
 
                 if (tempObj == null)
                     continue;
 
                 if (('playerId' in tempObj.gameObject) && (playerId === tempObj.gameObject.playerId)) {
-                    self.matter.world.remove(tempObj);
+                    this.matter.world.remove(tempObj);
                     tempObj.gameObject.active = false;
                     tempObj.gameObject.visible = false;
                     break;
