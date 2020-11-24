@@ -3,7 +3,7 @@ let app = express();
 let server = require('http').Server(app);
 let io = require('socket.io').listen(server);
 let players = {};
-let PORT = env.process.PORT || 4200;
+let PORT = process.env.PORT || 4200;
 
 app.use(express.static(__dirname + '/client'));
 
