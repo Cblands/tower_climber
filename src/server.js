@@ -4,6 +4,7 @@ const app = express();
 const server = require('http').Server(app);
 const io = require('socket.io').listen(server);
 let rooms = {};
+let PORT = process.env.PORT || 4200;
 
 app.use(express.static(__dirname + '/client'));
 
@@ -46,7 +47,6 @@ io.on('connection', function (socket) {
       rooms[roomno.toString(10)] = new Room(roomno);
    }
 });
-
-server.listen(4200, function (){
-   console.log(`Listening on ${server.address().port}`);
+server.listen(PORT, function (){
+   console.log(`Listening on ${PORT}`);
 });
