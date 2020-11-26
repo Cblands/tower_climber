@@ -3,7 +3,12 @@ const express = require('express');
 const app = express();
 const server = require('http').Server(app);
 const io = require('socket.io').listen(server);
+
+const totalPlayerCount = 10;
 let rooms = {};
+let roomno = 1;
+rooms[roomno.toString(10)] = new Room(roomno);
+
 let PORT = process.env.PORT || 4200;
 
 app.use(express.static(__dirname + '/client'));
@@ -12,12 +17,13 @@ app.get('/', function (req, res){
     res.sendFile(__dirname + '/index.html')
 });
 
+app.get('/playerCount', function (req, res){
+   res.json({current: rooms[roomno.toString(10)].getNumOfPlayers(), total: totalPlayerCount});
+});
+
 app.get('/game', function (req, res){
    res.sendFile(__dirname + '/client/game.html');
 });
-
-let roomno = 1;
-rooms[roomno.toString(10)] = new Room(roomno);
 
 io.on('connection', function (socket) {
    console.log("Connecting to room " + roomno);
