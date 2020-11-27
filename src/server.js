@@ -1,3 +1,4 @@
+const Constants = require("./constants.js");
 const Room = require("./server/room.js");
 const express = require('express');
 const app = express();
@@ -17,12 +18,19 @@ app.get('/game', function (req, res){
 });
 
 let roomno = 1;
-rooms[roomno.toString(10)] = new Room(roomno);
+let roomnoStr = roomno.toString(10);
+rooms[roomnoStr] = new Room(io, roomno, Constants.roomStates.waiting, Constants.maxPlayers);
 
 io.on('connection', function (socket) {
-   console.log("Connecting to room " + roomno);
+   
+   if(rooms[roomnoStr].getNumOfPlayers() >= Constants.maxPlayers || rooms[roomnoStr].getRoomState() != Constants.roomStates.waiting ) {
+      roomno++;
+      roomnoStr = roomno.toString(10);
+      rooms[roomnoStr] = new Room(io, roomno, Constants.roomStates.waiting, Constants.maxPlayers);
+   }
 
-    rooms[roomno.toString(10)].addPlayerToRoom(socket);
+   console.log("Connecting to room " + roomno);
+   rooms[roomnoStr].addPlayerToRoom(socket);
 
    socket.on('disconnect', function(){
       for(const key in rooms) {
@@ -42,10 +50,6 @@ io.on('connection', function (socket) {
        }
    });
 
-   if(rooms[roomno.toString(10)].getNumOfPlayers() >= 2) {
-      roomno++;
-      rooms[roomno.toString(10)] = new Room(roomno);
-   }
 });
 server.listen(PORT, function (){
    console.log(`Listening on ${PORT}`);
