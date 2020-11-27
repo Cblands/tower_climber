@@ -66,6 +66,13 @@ function create() {
 
     this.cameras.main.setBackgroundColor('rgb(0, 200, 255)');
 
+    /*** Cheeky garbage UI ***/
+    let waiting = document.createElement("span");
+    waiting.setAttribute("id", "waiting");
+    waiting.innerText = "Waiting for other players...";
+    waiting.style.display = "block";
+    document.body.appendChild(waiting);
+    /*** End of cheeky garbage UI ***/
 
     this.socket.on('currentPlayers', function (players) {
         Object.keys(players).forEach(function (id) {
@@ -115,6 +122,55 @@ function create() {
             console.log("Trying to disconnect self.");
         }
     });
+
+    /**** Listeners are required but the UI is just garbage to visualize the game state client side, actual UI will be needed. ****/
+
+    this.socket.on('readyUp', () => { // Ready state, room is full and countdown to begin game will start in <5s>.
+        console.log("Setting up game...");
+        document.getElementById("waiting").style.display = "none";
+        let readyUp = document.createElement("span");
+        readyUp.setAttribute("id", "ready-up");
+        readyUp.innerText = "Setting up game...";
+        readyUp.style.display = "block";
+        document.body.appendChild(readyUp);
+    })
+
+    this.socket.on('currentCountdown', (count) => { // Countdown, displayed to all players, counts down the time until game start <10s>
+        console.log(`Count: ${count}`);
+        document.getElementById("ready-up").style.display = "none";
+        let countdown = document.getElementById("countdown")
+        if(countdown) {
+            countdown.innerText = `Game starting in: ${count}`;
+        } else {
+            countdown = document.createElement("span");
+            countdown.setAttribute("id", "countdown");
+            countdown.innerText = `Game starting in: ${count}`;
+            countdown.style.display = "block";
+            document.body.appendChild(countdown);
+        }
+    })
+
+    this.socket.on('startGame', () => { // Triggered at the end of the countdown, game is starting
+        console.log("start");
+        document.getElementById("countdown").style.display = "none";
+        let start = document.createElement("span");
+        start.setAttribute("id", "start");
+        start.innerText = "GO!!!";
+        start.style.display = "block";
+        document.body.appendChild(start);
+    })
+
+    this.socket.on('gameOver', (winnerId) => { // Triggered when a player reaches the goal
+        console.log(`Winner: ${winnerId}`);
+        document.getElementById("start").style.display = "none";
+        let gameOver = document.createElement("span");
+        gameOver.setAttribute("id", "game-over");
+        gameOver.innerText = `Game Over. Player ${winnerId} Wins!!`;
+        gameOver.style.display = "block";
+        document.body.appendChild(gameOver);
+    })
+
+    /********* End of new listeners and garbage UI *********/
 
     this.cursors = this.input.keyboard.createCursorKeys();
 }
