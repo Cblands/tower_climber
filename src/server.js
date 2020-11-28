@@ -5,7 +5,6 @@ const app = express();
 const server = require('http').Server(app);
 const io = require('socket.io').listen(server);
 
-const totalPlayerCount = 10;
 let rooms = {};
 let roomno = 1;
 let roomnoStr = roomno.toString(10);
@@ -20,7 +19,7 @@ app.get('/', function (req, res){
 });
 
 app.get('/playerCount', function (req, res){
-   res.json({current: rooms[roomno.toString(10)].getNumOfPlayers(), total: totalPlayerCount});
+   res.json({current: rooms[roomno.toString(10)].getNumOfPlayers(), total: Constants.maxPlayers});
 });
 
 app.get('/game', function (req, res){
