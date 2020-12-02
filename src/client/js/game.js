@@ -98,10 +98,6 @@ function create() {
 
     this.socket.on('playerMoved', function (moveData) {
         if (actors[moveData.playerId]) {
-            if (moveData.py >= below_world) {
-                ResetPosition(actors[moveData.playerId]);
-                return;
-            }
 
             actors[moveData.playerId].setPosition(moveData.px, moveData.py);
             actors[moveData.playerId].setVelocity(moveData.vx, moveData.vy);
@@ -112,6 +108,15 @@ function create() {
                 actors[moveData.playerId].setFlipX(false)
         }
     });
+
+    this.socket.on('resetPlayer', function (moveData) {
+        if (actors[moveData.playerId]) {
+            if (moveData.py >= below_world) {
+                ResetPosition(actors[moveData.playerId]);
+                return;
+            }
+        }
+    })
 
     this.socket.on('disconnectPlayer', (playerId) => {
         if (playerId !== this.socket.id) {
@@ -263,14 +268,17 @@ function groundUpdate(self) {
     };
 
     if (self.cursors.left.isDown) {
+        this.move(self, self.socket.id, -5);
         moveData.vx = -5;
     }
 
     if (self.cursors.right.isDown) {
+        this.move(self, self.socket.id, 5);
         moveData.vx = 5;
     }
 
     if (self.cursors.space.isDown) {
+        this.jump(self, self.socket.id, jumpSpd[jumpTick = 0]);
         moveData.vy = jumpSpd[jumpTick = 0];
     }
 
@@ -286,14 +294,17 @@ function airUpdate(self) {
     };
 
     if (self.cursors.left.isDown) {
+        this.move(self, self.socket.id, -5);
         moveData.vx = -5;
     }
 
     if (self.cursors.right.isDown) {
-        moveData.vx = 5;
+        this.move(self, self.socket.id, 5);
+        moveData.vx = 5;  
     }
 
     if (self.cursors.space.isDown && jumpTick < jumpSpd.length) {
+        this.jump(self, self.socket.id, jumpSpd[jumpTick++]);
         moveData.vy = jumpSpd[jumpTick++];
     }
     else if (self.cursors.space.isUp) {

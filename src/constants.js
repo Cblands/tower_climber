@@ -12,4 +12,5 @@ module.exports = {
     prepareTime: 3, // time left on countdown when players get reset and movement gets locked
     readyUpTime: 5, // seconds
     goalLocation: 0, // y coordinates of goal
+    belowWorld: 2400, // Reset point for falling off world
 }
