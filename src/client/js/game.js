@@ -28,6 +28,8 @@ const groundedFriction = 1;
 const wallSlideFriction = 0.2;
 const airFriction = 0;
 const jumpSpd = [-3, -8, -14, -18, -12];
+const below_world = 2400;
+
 
 const start_pos = {
     x: 115,
@@ -96,8 +98,18 @@ function create() {
 
     this.socket.on('playerMoved', function (moveData) {
         if (actors[moveData.playerId]) {
+            if (moveData.py >= below_world) {
+                ResetPosition(actors[moveData.playerId]);
+                return;
+            }
+
             actors[moveData.playerId].setPosition(moveData.px, moveData.py);
             actors[moveData.playerId].setVelocity(moveData.vx, moveData.vy);
+
+            if (moveData.vx < 0)
+                actors[moveData.playerId].setFlipX(true)
+            else if (moveData.vx > 0)
+                actors[moveData.playerId].setFlipX(false)
         }
     });
 
@@ -152,18 +164,7 @@ function create() {
         console.log("prep");
 
         for (const key in actors) {
-            //for (var property in actors[key]) {
-            //    var value = actors[key][property];
-            //    console.log(property, value);
-            //}
-            console.log(key + " :: order :: " + actors[key].order);
-            console.log("start.x.offset: " + start_pos.x_offset);
-            console.log("start_pos.x: " + start_pos.x);
-
-            console.log("pos before set: " + (Math.floor(actors[key].order * start_pos.x_offset) + start_pos.x) + ", " + start_pos.y);
-            actors[key].setPosition(Math.floor(actors[key].order * start_pos.x_offset) + start_pos.x, start_pos.y);
-            actors[key].setVelocity(0, 0);
-            console.log("set actor " + key + " to pos: " + actors[key].start_x + ", " + actors[key].start_y);
+            ResetPosition(actors[key]);
         }
     })
 
@@ -352,4 +353,9 @@ function OnExitCollision(collisionData) {
         if (actors[collisionData.bodyB.label].ground.length == 0)
             actors[collisionData.bodyB.label].friction = 0;
     }
+}
+
+function ResetPosition(_actor) {
+    _actor.setPosition(Math.floor(_actor.order * start_pos.x_offset) + start_pos.x, start_pos.y);
+    _actor.setVelocity(0, 0);
 }
