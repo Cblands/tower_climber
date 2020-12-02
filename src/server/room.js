@@ -78,6 +78,7 @@ class Room {
     // If the room is full, we enter a brief ready state so the last player joining is shoved straight into a countdown.
     // After ready state state is over (see Constants.readyUpTime), we begin the countdown.
     beginMatchIfReady() {
+        //TODO: provide UI to start the room if there are >= 2 players
         if(this.checkRoomIsFull()) {
             this.roomState = Constants.roomStates.ready;
             this.io.in('room-' + this.roomNum).emit('readyUp');
