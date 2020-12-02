@@ -24,9 +24,14 @@ class Room {
         console.log('User ' + socket.id + ' joined');
         socket.join("room-" + this.roomNum);
 
+        let _order = Object.keys(this.playersInRoom).length;
+        if (Number.isNaN(_order))
+            _order = 0;
+
         this.playersInRoom[socket.id] = {
+            order: _order,
             rotation: 0,
-            x: Math.floor(Object.keys(this.playersInRoom).length * 235) + 115,
+            x: 115,
             y: 1260,
             playerId: socket.id,
             friendlyName: this.getNumOfPlayers() + 1,
@@ -48,9 +53,13 @@ class Room {
     }
 
     updatePlayerMovement(socket, moveData) {
-        this.playersInRoom[socket.id].x = moveData.x;
-        this.playersInRoom[socket.id].y = moveData.y;
-        socket.broadcast.to('room-' + this.roomNum).emit('playerMoved', this.playersInRoom[socket.id]);
+        //console.log('got moveData ' + moveData);
+
+        this.playersInRoom[socket.id].x += moveData.px + moveData.vx;
+        this.playersInRoom[socket.id].y += moveData.py + moveData.vy;
+
+        moveData.playerId = socket.id;
+        this.io.in('room-' + this.roomNum).emit('playerMoved', moveData);
         this.checkIfPastGoal(moveData, socket);
     }
 
@@ -77,6 +86,12 @@ class Room {
             // Sends message to players every second, client side will rely on this to display countdown to player.
             let countdownInterval = setInterval(() => {
                 count--;
+
+                if (count == Constants.prepareTime) {
+                    this.roomState = Constants.roomStates.prep;
+                    this.io.in('room-' + this.roomNum).emit('prep');
+                }
+
                 if(count <= Constants.countdownTime && count > 0) {
                     // Countdown has started, messages being sent once a second.
                     if (count === Constants.countdownTime ) this.roomState = Constants.roomStates.countdown;

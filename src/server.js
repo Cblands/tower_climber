@@ -47,8 +47,8 @@ io.on('connection', function (socket) {
    });
 
    socket.on('playerMovement', function (moveData){
-       for(const key in rooms) {
-           if(rooms[key].checkIfPlayerInRoom(socket.id)) {
+       for (const key in rooms) {
+           if (rooms[key].getRoomState() != Constants.roomStates.prep && rooms[key].checkIfPlayerInRoom(socket.id)) {
                rooms[key].updatePlayerMovement(socket, moveData);
                break;
            }
