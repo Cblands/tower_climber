@@ -27,12 +27,18 @@ let game = new Phaser.Game(config);
 const groundedFriction = 1;
 const wallSlideFriction = 0.2;
 const airFriction = 0;
-var ground = [];
-var localActorId;
+const jumpSpd = [-3, -8, -14, -18, -12];
+const below_world = 2400;
 
-var jumpSpd = [ -20, -15];
-var jumpTickMax = 6;
-var jumpTick = 0;
+
+const start_pos = {
+    x: 115,
+    x_offset: 235,
+    y: 1260
+}
+
+var localActorId;
+actors = {}
 
 function preload() {
     this.load.image('player', 'assets/BasePack/Player/p1_stand.png');
@@ -53,16 +59,12 @@ function create() {
     let foregroundLayer = map.createStaticLayer('Foreground', terrain, 0, 0);
     foregroundLayer.setCollisionByProperty({ Collides: true });
 
-    //map.setCollisionBetween(0, 6);
-
     this.matter.world.convertTilemapLayer(backgroundLayer);
     this.matter.world.convertTilemapLayer(foregroundLayer);
-    //this.matter.world.setBounds(width = map.width, height = map.height);
 
     this.matter.world.createDebugGraphic();
 
     let self = this;
-    self.actors = {}
 
     this.cameras.main.setBackgroundColor('rgb(0, 200, 255)');
 
@@ -76,7 +78,11 @@ function create() {
 
     this.socket.on('currentPlayers', function (players) {
         Object.keys(players).forEach(function (id) {
+            console.log(players[id]);
+
             if (players[id].playerId === self.socket.id) {
+                console.log('add local player');
+
                 addLocalPlayer(self, players[id]);
             } else {
                 addRemotePlayer(self, players[id]);
@@ -85,21 +91,25 @@ function create() {
     });
 
     this.socket.on('newPlayer', function (playerInfo) {
+        console.log(playerInfo);
+
         addRemotePlayer(self, playerInfo);
     });
 
-    this.socket.on('playerMoved', function (playerInfo) {
-        if (playerInfo.playerId !== self.socket.id) {
-            for (let i = self.matter.world.localWorld.bodies.length - 1; i >= 0; --i) {
-                let tempObj = self.matter.world.localWorld.bodies[i];
-                if (('playerId' in tempObj.gameObject) && (playerInfo.playerId === tempObj.gameObject.playerId)) {
-                    tempObj.position.x = playerInfo.x;
-                    tempObj.position.y = playerInfo.y;
-                    break;
-                }
+    this.socket.on('playerMoved', function (moveData) {
+        if (actors[moveData.playerId]) {
+            if (moveData.py >= below_world) {
+                ResetPosition(actors[moveData.playerId]);
+                return;
             }
-        } else {
-            console.log("Trying to update self position.");
+
+            actors[moveData.playerId].setPosition(moveData.px, moveData.py);
+            actors[moveData.playerId].setVelocity(moveData.vx, moveData.vy);
+
+            if (moveData.vx < 0)
+                actors[moveData.playerId].setFlipX(true)
+            else if (moveData.vx > 0)
+                actors[moveData.playerId].setFlipX(false)
         }
     });
 
@@ -150,6 +160,14 @@ function create() {
         }
     })
 
+    this.socket.on('prep', () => {
+        console.log("prep");
+
+        for (const key in actors) {
+            ResetPosition(actors[key]);
+        }
+    })
+
     this.socket.on('startGame', () => { // Triggered at the end of the countdown, game is starting
         console.log("start");
         document.getElementById("countdown").style.display = "none";
@@ -177,122 +195,120 @@ function create() {
 
 function addLocalPlayer(self, playerInfo) {
     console.log("Add local player");
-    self.actors[playerInfo.playerId] = self.matter.add.image(playerInfo.x, playerInfo.y, 'player').setOrigin(0.5, 0.5).setDisplaySize(64, 64);
-    self.actors[playerInfo.playerId].setCircle(32);
-    self.actors[playerInfo.playerId].setFixedRotation();
+    actors[playerInfo.playerId] = self.matter.add.image(Math.floor(playerInfo.order * start_pos.x_offset) + start_pos.x, start_pos.y, 'player').setOrigin(0.5, 0.5).setDisplaySize(64, 64);
+    actors[playerInfo.playerId].setCircle(32);
+    actors[playerInfo.playerId].setFixedRotation();
 
-    localActorId = self.actors[playerInfo.playerId].body.id;
-    console.log(self.localActorId);
+    actors[playerInfo.playerId].order = playerInfo.order;
 
-    self.actors[playerInfo.playerId].setOnCollide(OnEnterCollision);
-    self.actors[playerInfo.playerId].setOnCollideEnd(OnExitCollision);
+    self.cameras.main.startFollow(actors[playerInfo.playerId], lerpX = 0.5, lerpY = 0.5);
 
-    self.cameras.main.startFollow(self.actors[playerInfo.playerId], lerpX = 0.5, lerpY = 0.5);
+    actors[playerInfo.playerId].jumpTick = 0;
+    actors[playerInfo.playerId].ground = [];
 
-    self.player = self.actors[playerInfo.playerId];
-    console.log(self.actors[self.localActorId]);
+    actors[playerInfo.playerId].body.label = playerInfo.playerId;
+
+    actors[playerInfo.playerId].setOnCollide(OnEnterCollision);
+    actors[playerInfo.playerId].setOnCollideEnd(OnExitCollision);
+
+    localActorId = actors[playerInfo.playerId].body.id;
+    self.player = actors[playerInfo.playerId];
+
+    //console.log("actor " + playerInfo.playerId + "start pos: " + playerInfo.x + ", " + playerInfo.y);
+
+    //for (var property in self.player) {
+    //    var value = self.player[property];
+    //    console.log(property, value);
+    //}
 }
 
 function addRemotePlayer(self, playerInfo) {
     console.log("Add remote player");
-    const otherPlayer = self.matter.add.image(playerInfo.x, playerInfo.y, 'newPlayer').setDisplaySize(64, 64);
+    const otherPlayer = self.matter.add.image(Math.floor(playerInfo.order * start_pos.x_offset) + start_pos.x, start_pos.y, 'newPlayer').setDisplaySize(64, 64);
     otherPlayer.playerId = playerInfo.playerId;
     otherPlayer.setCircle(32);
     otherPlayer.setFixedRotation();
     self.matter.world.add(otherPlayer);
-    self.actors[playerInfo.playerId] = otherPlayer;
+
+    otherPlayer.order = playerInfo.order;
+
+    otherPlayer.jumpTick = 0;
+    otherPlayer.ground = [];
+
+    otherPlayer.body.label = playerInfo.playerId;
+
+    otherPlayer.setOnCollide(OnEnterCollision);
+    otherPlayer.setOnCollideEnd(OnExitCollision);
+
+    actors[playerInfo.playerId] = otherPlayer;
+
+    //console.log("actor " + playerInfo.playerId + "start pos: " + playerInfo.x + ", " + playerInfo.y);
 }
 
 function update() {
     if (this.player) {
-        if (ground.length > 0)
+        if (this.player.ground.length > 0)
             groundUpdate(this);
-        else if (ground.length == 0)
+        else if (this.player.ground.length == 0)
             airUpdate(this);
-
-        let xMov = this.player.x;
-        let yMov = this.player.y;
-
-        let xMovRounded = Math.round((xMov + Number.EPSILON) * 10) / 10;
-        let yMovRounded = Math.round((yMov + Number.EPSILON) * 10) / 10;
-        let oldXMovRounded = this.player.oldPosition ? Math.round((this.player.oldPosition.x + Number.EPSILON) * 10) / 10 : 0;
-        let oldYMovRounded = this.player.oldPosition ? Math.round((this.player.oldPosition.y + Number.EPSILON) * 10) / 10 : 0;
-
-        if (this.player.oldPosition && (xMovRounded !== oldXMovRounded || yMovRounded !== oldYMovRounded)) {
-            console.log(xMovRounded + ":" + oldXMovRounded);
-            this.socket.emit('playerMovement', { x: xMov, y: yMov });
-        }
-        this.player.oldPosition = {
-            x: xMov,
-            y: yMov
-        };
     }
-    else
-        console.log("no local actor");
 }
 
 function groundUpdate(self) {
+    let moveData = {
+        px: self.player.x,
+        py: self.player.y,
+        vx: self.player.body.velocity.x,
+        vy: self.player.body.velocity.y
+    };
+
     if (self.cursors.left.isDown) {
-        //console.log("left held down");
-        //self.socket.emit('move', 'left');
-        //self.actors[self.socket.id].applyForce(-0.5, 0);
-        move(self, -5, 'left');
+        moveData.vx = -5;
     }
-    else if (self.cursors.right.isDown) {
-        //console.log("right held down");
-        //self.socket.emit('move', 'right');
-        //self.actors[self.socket.id].applyForce(0.5, 0);
-        move(self, 5, 'right');
+
+    if (self.cursors.right.isDown) {
+        moveData.vx = 5;
     }
 
     if (self.cursors.space.isDown) {
-        //console.log("jump held down");
-
-        self.socket.emit('move', 'jump');
-        //self.actors[self.socket.id].applyForce((0, jumpSpd[jumpTick = 0]));
-        console.log("jumpSpd: " + jumpSpd[jumpTick = 0]);
-        jump(self, jumpSpd[jumpTick = 0]);
+        moveData.vy = jumpSpd[jumpTick = 0];
     }
 
+    self.socket.emit('playerMovement', moveData);
 }
 
 function airUpdate(self) {
+    let moveData = {
+        px: self.player.x,
+        py: self.player.y,
+        vx: self.player.body.velocity.x,
+        vy: self.player.body.velocity.y
+    };
+
     if (self.cursors.left.isDown) {
-        //console.log("left held down");
-        //self.socket.emit('move', 'left');
-        //self.actors[self.socket.id].applyForce(-0.5, 0);
-        move(self, -5, 'left');
+        moveData.vx = -5;
     }
-    else if (self.cursors.right.isDown) {
-        //console.log("right held down");
-        //self.socket.emit('move', 'right');
-        //self.actors[self.socket.id].applyForce(0.5, 0);
-        //self.actors[self.socket.id].setVelocityX(5);
-        move(self, 5, 'right');
+
+    if (self.cursors.right.isDown) {
+        moveData.vx = 5;
     }
 
     if (self.cursors.space.isDown && jumpTick < jumpSpd.length) {
-        //console.log("jump held down");
-        //self.actors[self.socket.id].applyForce((0, jumpSpd[jumpTick++]));
-
-        console.log("jumpSpd: " + jumpSpd[jumpTick++]);
-        jump(self, jumpSpd[jumpTick++]);
+        moveData.vy = jumpSpd[jumpTick++];
     }
     else if (self.cursors.space.isUp) {
         jumpTick = jumpSpd.length;
     }
-    else if (jumpTick >= jumpSpd.length) {
-        console.log("jumpTick > length: " + jumpTick + " > " + jumpSpd.length);
-    }
+
+    self.socket.emit('playerMovement', moveData);
 }
 
-function move(self, spd, direction) {
-    self.socket.emit('move', direction);
-    self.player.setVelocityX(spd);
+function move(self, playerId, spd) {
+    actors[playerId].setVelocityX(spd);
 }
 
-function jump(self, spd) {
-    self.player.setVelocityY(spd);
+function jump(self, playerId, spd) {
+    actors[playerId].setVelocityY(spd);
 }
 
 function OnEnterCollision(collisionData)
@@ -304,42 +320,42 @@ function OnEnterCollision(collisionData)
     //    console.log(property, value);
     //}
 
-    if (collisionData.bodyA.id == localActorId) {
+    if (collisionData.bodyA.label && actors[collisionData.bodyA.label]) {
         if (collisionData.collision.normal.y < 0) {
-            ground.push(collisionData.bodyB.id);
+            collisionData.bodyA.parent.gameObject.ground.push(collisionData.bodyB.id);
             collisionData.bodyA.friction = 1;
         }
     }
-    else if (collisionData.bodyB.id == localActorId) {
+    else if (collisionData.bodyB.label && actors[collisionData.bodyB.label]) {
         if (collisionData.collision.normal.y > 0) {
-            ground.push(collisionData.bodyA.id);
+            collisionData.bodyB.parent.gameObject.ground.push(collisionData.bodyA.id);
             collisionData.bodyB.friction = 1;
         }
     }
-
-    console.log("enter " + ground);
 }
 
 function OnExitCollision(collisionData) {
-    if (ground.length == 0)
-        return;
+    if (collisionData.bodyA.label && actors[collisionData.bodyA.label]) {
+        if (actors[collisionData.bodyA.label].ground.length == 0)
+            return;
 
-    var playerBody;
-    var groundBody;
+        actors[collisionData.bodyA.label].ground = actors[collisionData.bodyA.label].ground.filter(function (value, index, arr) { return value != collisionData.bodyB.id; });
 
-    if (collisionData.bodyA.id == localActorId) {
-        playerBody = collisionData.bodyA;
-        groundBody = collisionData.bodyB;
+        if (actors[collisionData.bodyA.label].ground.length == 0)
+            actors[collisionData.bodyA.label].friction = 0;
     }
-    else if (collisionData.bodyB.id == localActorId) {
-        groundBody = collisionData.bodyA;
-        playerBody = collisionData.bodyB;
+    else if (collisionData.bodyB.label && actors[collisionData.bodyB.label]) {
+        if (actors[collisionData.bodyB.label].ground.length == 0)
+            return;
+
+        actors[collisionData.bodyB.label].ground = actors[collisionData.bodyB.label].ground.filter(function (value, index, arr) { return value != collisionData.bodyA.id; });
+
+        if (actors[collisionData.bodyB.label].ground.length == 0)
+            actors[collisionData.bodyB.label].friction = 0;
     }
+}
 
-    ground = ground.filter(function (value, index, arr) { return value != groundBody.id; });
-
-    //console.log("exit: " + ground);
-
-    if (ground.length == 0)
-        playerBody.friction = 0;
+function ResetPosition(_actor) {
+    _actor.setPosition(Math.floor(_actor.order * start_pos.x_offset) + start_pos.x, start_pos.y);
+    _actor.setVelocity(0, 0);
 }
