@@ -24,18 +24,22 @@ let config = {
 };
 
 let game = new Phaser.Game(config);
+
 const groundedFriction = 1;
 const wallSlideFriction = 0.2;
 const airFriction = 0;
-const jumpSpd = [-3, -8, -14, -18, -12];
+
 const below_world = 2400;
-
-
 const start_pos = {
     x: 115,
     x_offset: 235,
     y: 1260
 }
+
+const moveSpd = 5;
+const jumpSpd = [-3, -8, -14, -18, -12];
+
+
 
 var localActorId;
 actors = {}
@@ -102,9 +106,9 @@ function create() {
             actors[moveData.playerId].setPosition(moveData.px, moveData.py);
             actors[moveData.playerId].setVelocity(moveData.vx, moveData.vy);
 
-            if (moveData.vx < 0)
+            if (moveData.vx <= -moveSpd)
                 actors[moveData.playerId].setFlipX(true)
-            else if (moveData.vx > 0)
+            else if (moveData.vx >= moveSpd)
                 actors[moveData.playerId].setFlipX(false)
         }
     });
@@ -199,7 +203,7 @@ function create() {
 }
 
 function addLocalPlayer(self, playerInfo) {
-    console.log("Add local player");
+    console.log("\n\nAdd Local Player:\n\n");
     actors[playerInfo.playerId] = self.matter.add.image(Math.floor(playerInfo.order * start_pos.x_offset) + start_pos.x, start_pos.y, 'player').setOrigin(0.5, 0.5).setDisplaySize(64, 64);
     actors[playerInfo.playerId].setCircle(32);
     actors[playerInfo.playerId].setFixedRotation();
@@ -225,10 +229,11 @@ function addLocalPlayer(self, playerInfo) {
     //    var value = self.player[property];
     //    console.log(property, value);
     //}
+    //console.log("\n\n");
 }
 
 function addRemotePlayer(self, playerInfo) {
-    console.log("Add remote player");
+    console.log("\n\nAdd remote player\n\n");
     const otherPlayer = self.matter.add.image(Math.floor(playerInfo.order * start_pos.x_offset) + start_pos.x, start_pos.y, 'newPlayer').setDisplaySize(64, 64);
     otherPlayer.playerId = playerInfo.playerId;
     otherPlayer.setCircle(32);
@@ -248,6 +253,11 @@ function addRemotePlayer(self, playerInfo) {
     actors[playerInfo.playerId] = otherPlayer;
 
     //console.log("actor " + playerInfo.playerId + "start pos: " + playerInfo.x + ", " + playerInfo.y);
+    //for (var property in self.player) {
+    //    var value = self.player[property];
+    //    console.log(property, value);
+    //}
+    //console.log("\n\n");
 }
 
 function update() {
@@ -268,18 +278,18 @@ function groundUpdate(self) {
     };
 
     if (self.cursors.left.isDown) {
-        this.move(self, self.socket.id, -5);
-        moveData.vx = -5;
+        this.move(self, self.socket.id, -moveSpd);
+        moveData.vx = -moveSpd;
     }
 
     if (self.cursors.right.isDown) {
-        this.move(self, self.socket.id, 5);
-        moveData.vx = 5;
+        this.move(self, self.socket.id, moveSpd);
+        moveData.vx = moveSpd;
     }
 
     if (self.cursors.space.isDown) {
         this.jump(self, self.socket.id, jumpSpd[jumpTick = 0]);
-        moveData.vy = jumpSpd[jumpTick = 0];
+        moveData.vy = jumpSpd[jumpTick];
     }
 
     self.socket.emit('playerMovement', moveData);
@@ -294,17 +304,17 @@ function airUpdate(self) {
     };
 
     if (self.cursors.left.isDown) {
-        this.move(self, self.socket.id, -5);
-        moveData.vx = -5;
+        this.move(self, self.socket.id, -moveSpd);
+        moveData.vx = -moveSpd;
     }
 
     if (self.cursors.right.isDown) {
-        this.move(self, self.socket.id, 5);
-        moveData.vx = 5;  
+        this.move(self, self.socket.id, moveSpd);
+        moveData.vx = moveSpd;  
     }
 
     if (self.cursors.space.isDown && jumpTick < jumpSpd.length) {
-        this.jump(self, self.socket.id, jumpSpd[jumpTick++]);
+        this.jump(self, self.socket.id, jumpSpd[jumpTick]);
         moveData.vy = jumpSpd[jumpTick++];
     }
     else if (self.cursors.space.isUp) {
@@ -315,6 +325,12 @@ function airUpdate(self) {
 }
 
 function move(self, playerId, spd) {
+
+    if (spd <= -moveSpd)
+        actors[playerId].setFlipX(true);
+    else if (spd >= moveSpd)
+        actors[playerId].setFlipX(false);
+
     actors[playerId].setVelocityX(spd);
 }
 
@@ -337,7 +353,8 @@ function OnEnterCollision(collisionData)
             collisionData.bodyA.friction = 1;
         }
     }
-    else if (collisionData.bodyB.label && actors[collisionData.bodyB.label]) {
+
+    if (collisionData.bodyB.label && actors[collisionData.bodyB.label]) {
         if (collisionData.collision.normal.y > 0) {
             collisionData.bodyB.parent.gameObject.ground.push(collisionData.bodyA.id);
             collisionData.bodyB.friction = 1;
@@ -355,7 +372,8 @@ function OnExitCollision(collisionData) {
         if (actors[collisionData.bodyA.label].ground.length == 0)
             actors[collisionData.bodyA.label].friction = 0;
     }
-    else if (collisionData.bodyB.label && actors[collisionData.bodyB.label]) {
+
+    if (collisionData.bodyB.label && actors[collisionData.bodyB.label]) {
         if (actors[collisionData.bodyB.label].ground.length == 0)
             return;
 
