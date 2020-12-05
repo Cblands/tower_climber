@@ -59,7 +59,11 @@ class Room {
         this.playersInRoom[socket.id].y += moveData.py + moveData.vy;
 
         moveData.playerId = socket.id;
-        this.io.in('room-' + this.roomNum).emit('playerMoved', moveData);
+        if (moveData.py >= Constants.belowWorld) {
+            this.io.in('room-' + this.roomNum).emit('resetPlayer', moveData);
+        } else {
+            socket.to('room-' + this.roomNum).emit('playerMoved', moveData);
+        }
         this.checkIfPastGoal(moveData, socket);
     }
 
@@ -67,7 +71,7 @@ class Room {
     // If it has, send message to all members of the room, including the player that reached the goal,
     // that someone has won and the game is over. Room transitions to "end" state.
     checkIfPastGoal(moveData, socket) {
-        if(moveData.y <= Constants.goalLocation && this.roomState == Constants.roomStates.running) {
+        if(moveData.py <= Constants.goalLocation && this.roomState == Constants.roomStates.running) {
             this.roomState = Constants.roomStates.end;
             this.io.in('room-' + this.roomNum).emit('gameOver', this.playersInRoom[socket.id].friendlyName);
             console.log(`Player ${this.playersInRoom[socket.id].friendlyName} Wins!`);
