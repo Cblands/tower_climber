@@ -4,4 +4,6 @@ To install the required modules:
 ``npm install``
 
 To start the server:
+``npm start``
+OR
 ``node src/server.js``
