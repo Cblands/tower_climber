@@ -7,7 +7,7 @@ module.exports = {
         running: 4, // Active game
         end: 5, // Goal state has been reached
     },
-    maxPlayers: 3, // Maximum number of players in a room
+    maxPlayers: 3, // Maximum number of players in a room ** Make sure to change the MAX_PLAYERS constant in game.js **
     countdownTime: 10, // seconds
     prepareTime: 3, // time left on countdown when players get reset and movement gets locked
     readyUpTime: 5, // seconds

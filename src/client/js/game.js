@@ -3,13 +3,13 @@
 
 let config = {
     type: Phaser.AUTO,
-    parent: 'Tower-Climber',
+    parent: 'phaserContainer',
     width: 800,
     height: 600,
     physics: {
         default: 'matter',
         matter: {
-            debug: true,
+            debug: false,
             gravity: { y: 1 }
         }
     },
@@ -35,6 +35,8 @@ const start_pos = {
     x_offset: 235,
     y: 1260
 }
+
+const MAX_PLAYERS = 3; /** Make sure to change the MAX_PLAYERS constant in game.js **/
 
 const moveSpd = 5;
 const jumpSpd = [-3, -8, -14, -18, -12];
@@ -70,15 +72,13 @@ function create() {
 
     this.cameras.main.setBackgroundColor('rgb(0, 200, 255)');
 
-    /*** Cheeky garbage UI ***/
-    let waiting = document.createElement("span");
-    waiting.setAttribute("id", "waiting");
-    waiting.innerText = "Waiting for other players...";
-    waiting.style.display = "block";
-    document.body.appendChild(waiting);
-    /*** End of cheeky garbage UI ***/
+    let roomStatusSpan = document.getElementById("roomStatus");
+    roomStatusSpan.innerText = "Waiting for other players...";
 
     this.socket.on('currentPlayers', function (players) {
+        let playerCount = document.getElementById("playerCount");
+        playerCount.innerText = `${Object.keys(players).length}/${MAX_PLAYERS}`;
+
         Object.keys(players).forEach(function (id) {
             console.log(players[id]);
 
@@ -92,7 +92,9 @@ function create() {
         });
     });
 
-    this.socket.on('newPlayer', function (playerInfo) {
+    this.socket.on('newPlayer', function (playerInfo, playerCount) {
+        let playerCountSpan = document.getElementById("playerCount");
+        playerCountSpan.innerText = `${playerCount}/${MAX_PLAYERS}`;
         console.log(playerInfo);
 
         addRemotePlayer(self, playerInfo);
@@ -120,7 +122,10 @@ function create() {
         }
     })
 
-    this.socket.on('disconnectPlayer', (playerId) => {
+    this.socket.on('disconnectPlayer', (playerId, playerCount) => {
+        let playerCountSpan = document.getElementById("playerCount");
+        playerCountSpan.innerText = `${playerCount}/${MAX_PLAYERS}`;
+
         if (playerId !== this.socket.id) {
             for (let i = this.matter.world.localWorld.bodies.length - 1; i >= 0; --i) {
                 let tempObj = this.matter.world.localWorld.bodies[i];
@@ -140,31 +145,22 @@ function create() {
         }
     });
 
-    /**** Listeners are required but the UI is just garbage to visualize the game state client side, actual UI will be needed. ****/
-
     this.socket.on('readyUp', () => { // Ready state, room is full and countdown to begin game will start in <5s>.
+        let roomStatusSpan = document.getElementById("roomStatus");
+        roomStatusSpan.innerText = "Setting up game...";
         console.log("Setting up game...");
-        document.getElementById("waiting").style.display = "none";
-        let readyUp = document.createElement("span");
-        readyUp.setAttribute("id", "ready-up");
-        readyUp.innerText = "Setting up game...";
-        readyUp.style.display = "block";
-        document.body.appendChild(readyUp);
     })
 
     this.socket.on('currentCountdown', (count) => { // Countdown, displayed to all players, counts down the time until game start <10s>
-        console.log(`Count: ${count}`);
-        document.getElementById("ready-up").style.display = "none";
-        let countdown = document.getElementById("countdown")
-        if(countdown) {
-            countdown.innerText = `Game starting in: ${count}`;
-        } else {
-            countdown = document.createElement("span");
-            countdown.setAttribute("id", "countdown");
-            countdown.innerText = `Game starting in: ${count}`;
-            countdown.style.display = "block";
-            document.body.appendChild(countdown);
+        let roomStatusSpan = document.getElementById("roomStatus");
+        roomStatusSpan.innerText = `Game starting in: ${count}`;
+        if (count <= 3 && count > 0) {
+            let counntdownImage = document.getElementById("countdown");
+            counntdownImage.setAttribute("src", `assets/BasePack/HUD/hud_${count}.png`);
+            counntdownImage.style.display = "block";
         }
+
+        console.log(`Count: ${count}`);
     })
 
     this.socket.on('prep', () => {
@@ -176,26 +172,18 @@ function create() {
     })
 
     this.socket.on('startGame', () => { // Triggered at the end of the countdown, game is starting
+        let counntdownImage = document.getElementById("countdown");
+        counntdownImage.style.display = "none";
+        let roomStatusSpan = document.getElementById("roomStatus");
+        roomStatusSpan.innerText = "GO!!!";
         console.log("start");
-        document.getElementById("countdown").style.display = "none";
-        let start = document.createElement("span");
-        start.setAttribute("id", "start");
-        start.innerText = "GO!!!";
-        start.style.display = "block";
-        document.body.appendChild(start);
     })
 
     this.socket.on('gameOver', (winnerId) => { // Triggered when a player reaches the goal
+        let roomStatusSpan = document.getElementById("roomStatus");
+        roomStatusSpan.innerText = `Game Over. Player ${winnerId} Wins!!`;
         console.log(`Winner: ${winnerId}`);
-        document.getElementById("start").style.display = "none";
-        let gameOver = document.createElement("span");
-        gameOver.setAttribute("id", "game-over");
-        gameOver.innerText = `Game Over. Player ${winnerId} Wins!!`;
-        gameOver.style.display = "block";
-        document.body.appendChild(gameOver);
     })
-
-    /********* End of new listeners and garbage UI *********/
 
     this.cursors = this.input.keyboard.createCursorKeys();
 }
