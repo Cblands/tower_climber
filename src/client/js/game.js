@@ -39,8 +39,6 @@ const start_pos = {
 const moveSpd = 5;
 const jumpSpd = [-3, -8, -14, -18, -12];
 
-
-
 var localActorId;
 actors = {}
 
@@ -364,9 +362,6 @@ function OnEnterCollision(collisionData)
 
 function OnExitCollision(collisionData) {
     if (collisionData.bodyA.label && actors[collisionData.bodyA.label]) {
-        if (actors[collisionData.bodyA.label].ground.length == 0)
-            return;
-
         actors[collisionData.bodyA.label].ground = actors[collisionData.bodyA.label].ground.filter(function (value, index, arr) { return value != collisionData.bodyB.id; });
 
         if (actors[collisionData.bodyA.label].ground.length == 0)
