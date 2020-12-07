@@ -41,7 +41,7 @@ class Room {
         console.log(this.playersInRoom[socket.id].roomNum)
 
         socket.emit('currentPlayers', this.playersInRoom);
-        socket.to('room-' + this.roomNum).emit('newPlayer', this.playersInRoom[socket.id]);
+        socket.to('room-' + this.roomNum).emit('newPlayer', this.playersInRoom[socket.id], this.getNumOfPlayers());
         this.beginMatchIfReady();
     }
 
@@ -49,7 +49,7 @@ class Room {
         console.log('User ' + socket.id + ' left');
         socket.leave('room-' + this.roomNum);
         delete this.playersInRoom[socket.id];
-        socket.to("room-" + this.roomNum).emit('disconnectPlayer', socket.id);
+        socket.to("room-" + this.roomNum).emit('disconnectPlayer', socket.id, this.getNumOfPlayers());
     }
 
     updatePlayerMovement(socket, moveData) {
